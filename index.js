@@ -1,47 +1,58 @@
-const yargs = require("yargs");
-const pck = require("./package.json");
-const { addNote, getNotes, printNotes, remove} = require("./notes.controller");
+const express = require("express");
+const chalk = require("chalk");
+const path = require("path");
+const { addNote, getNotes, remove, edit} = require("./notes.controller");
 
-yargs.version(pck.version);
+const port = 3000;
 
-yargs.command({
-    command: "add",
-    describe: "Add new note to list",
-    builder: {
-        title: {
-            type: "string",
-            describe: "note title",
-            demandOption: true
-        }
-    },
-    handler({ title }) {
-        addNote(title);
-    }
+const app = express();
+
+app.set("view engine", "ejs");
+app.set("views", "pages");
+
+app.use(express.static(path.resolve(__dirname, "public")));
+
+app.use(express.urlencoded({
+    extended: true
+}));
+
+app.use(express.json());
+
+app.get("/", async (req, res) => {
+    res.render("index", {
+        title: "Express App",
+        notes: await getNotes(),
+        created: false
+    });
 })
 
-yargs.command({
-    command: "list",
-    describe: "Print all notes",
-    async handler() {
-        // const notes = await getNotes();
-        // console.log(notes);
-        printNotes();
-    }
+app.post("/", async (req, res) => {
+    await addNote(req.body.title);
+    res.render("index", {
+        title: "Express App",
+        notes: await getNotes(),
+        created: true
+    });
 })
 
-yargs.command({
-    command: "remove",
-    describe: "Remove note by id",
-    builder: {
-        id: {
-            type: "string",
-            describe: "id of element which delete",
-            demandOption: true
-        }
-    },
-    handler({ id }) {
-        remove(id);
-    }
+app.delete("/:id", async (req, res) => {
+    await remove(req.params.id);
+    res.render("index", {
+        title: "Express App",
+        notes: await getNotes(),
+        created: false
+    });
 })
 
-yargs.parse();
+app.put("/:id/:title", async (req, res) => {
+    await edit(req.params.id, req.params.title);
+    res.render("index", {
+        title: "Express App",
+        notes: await getNotes(),
+        created: false
+    });
+})
+
+app.listen(port, () => {
+    console.log(chalk.green(`Server has been started on port ${port}`));
+})
